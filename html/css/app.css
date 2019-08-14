@@ -14,7 +14,7 @@ html {
 
 #hud {
 	position: absolute;
-	font-family: 'Pricedown';
+	font-family: 'bankgothic';
 	font-size: 35px;
 	color: white;
 	padding: 4px;
@@ -28,7 +28,7 @@ html {
 	font-family: bankgothic;
 	position: absolute;
 	right: 40;
-	bottom: 40;
+	bottom: 200;
 	font-size: 2em;
 	font-weight: bold;
 	color: #FFF;
@@ -74,7 +74,7 @@ html {
 	font-size: 14px;
 	height: 40px;
 	display: block;
-	background-color: #f1f1f1;
+	background-color: rgba(0, 0, 0, 0.4);
 	box-shadow: inset 1px 0px 0px 1px #b8b8b8;
 	height: 32px;
 	line-height: 32px;
@@ -83,5 +83,5 @@ html {
 }
 
 .menu .menu-items .menu-item.selected {
-	background-color: #ccc;
+	background-color: rgba(0, 0, 0, 0.4);
 }

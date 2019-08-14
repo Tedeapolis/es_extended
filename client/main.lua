@@ -1,4 +1,3 @@
-
 local isLoadoutLoaded, isPaused, isPlayerSpawned, isDead = false, false, false, false
 local lastLoadout, pickups = {}, {}
 
@@ -8,15 +7,15 @@ AddEventHandler('esx:playerLoaded', function(xPlayer)
 	ESX.PlayerData = xPlayer
 
 	if Config.EnableHud then
-		for k,v in ipairs(xPlayer.accounts) do
-			local accountTpl = '<div><img src="img/accounts/' .. v.name .. '.png"/>&nbsp;{{money}}</div>'
+		for i=1, #xPlayer.accounts, 1 do
+			local accountTpl = '<div><img src="img/accounts/' .. xPlayer.accounts[i].name .. '.png"/>&nbsp;{{money}}</div>'
 
-			ESX.UI.HUD.RegisterElement('account_' .. v.name, k - 1, 0, accountTpl, {
+			ESX.UI.HUD.RegisterElement('account_' .. xPlayer.accounts[i].name, i-1, 0, accountTpl, {
 				money = 0
 			})
 
-			ESX.UI.HUD.UpdateElement('account_' .. v.name, {
-				money = ESX.Math.GroupDigits(v.money)
+			ESX.UI.HUD.UpdateElement('account_' .. xPlayer.accounts[i].name, {
+				money = ESX.Math.GroupDigits(xPlayer.accounts[i].money)
 			})
 		end
 
@@ -35,6 +34,7 @@ AddEventHandler('esx:playerLoaded', function(xPlayer)
 			job_label   = xPlayer.job.label,
 			grade_label = xPlayer.job.grade_label
 		})
+
 	else
 		TriggerEvent('es:setMoneyDisplay', 0.0)
 	end
@@ -51,7 +51,6 @@ AddEventHandler('playerSpawned', function()
 	if ESX.PlayerData.lastPosition then
 		SetEntityCoords(playerPed, ESX.PlayerData.lastPosition.x, ESX.PlayerData.lastPosition.y, ESX.PlayerData.lastPosition.z)
 	end
-
 	TriggerEvent('esx:restoreLoadout') -- restore loadout
 
 	isLoadoutLoaded = true
@@ -81,21 +80,22 @@ AddEventHandler('esx:restoreLoadout', function()
 
 	RemoveAllPedWeapons(playerPed, true)
 
-	for k,v in ipairs(ESX.PlayerData.loadout) do
-		local weaponName = v.name
+	for i=1, #ESX.PlayerData.loadout, 1 do
+		local weaponName = ESX.PlayerData.loadout[i].name
 		local weaponHash = GetHashKey(weaponName)
 
 		GiveWeaponToPed(playerPed, weaponHash, 0, false, false)
 		local ammoType = GetPedAmmoTypeFromWeapon(playerPed, weaponHash)
 
-		for k2,v2 in ipairs(v.components) do
-			local componentHash = ESX.GetWeaponComponent(weaponName, v2).hash
+		for j=1, #ESX.PlayerData.loadout[i].components, 1 do
+			local weaponComponent = ESX.PlayerData.loadout[i].components[j]
+			local componentHash = ESX.GetWeaponComponent(weaponName, weaponComponent).hash
 
 			GiveWeaponComponentToPed(playerPed, weaponHash, componentHash)
 		end
 
 		if not ammoTypes[ammoType] then
-			AddAmmoToPed(playerPed, weaponHash, v.ammo)
+			AddAmmoToPed(playerPed, weaponHash, ESX.PlayerData.loadout[i].ammo)
 			ammoTypes[ammoType] = true
 		end
 	end
@@ -105,9 +105,9 @@ end)
 
 RegisterNetEvent('esx:setAccountMoney')
 AddEventHandler('esx:setAccountMoney', function(account)
-	for k,v in ipairs(ESX.PlayerData.accounts) do
-		if v.name == account.name then
-			ESX.PlayerData.accounts[k] = account
+	for i=1, #ESX.PlayerData.accounts, 1 do
+		if ESX.PlayerData.accounts[i].name == account.name then
+			ESX.PlayerData.accounts[i] = account
 			break
 		end
 	end
@@ -126,9 +126,9 @@ end)
 
 RegisterNetEvent('esx:addInventoryItem')
 AddEventHandler('esx:addInventoryItem', function(item, count)
-	for k,v in ipairs(ESX.PlayerData.inventory) do
-		if v.name == item.name then
-			ESX.PlayerData.inventory[k] = item
+	for i=1, #ESX.PlayerData.inventory, 1 do
+		if ESX.PlayerData.inventory[i].name == item.name then
+			ESX.PlayerData.inventory[i] = item
 			break
 		end
 	end
@@ -142,9 +142,9 @@ end)
 
 RegisterNetEvent('esx:removeInventoryItem')
 AddEventHandler('esx:removeInventoryItem', function(item, count)
-	for k,v in ipairs(ESX.PlayerData.inventory) do
-		if v.name == item.name then
-			ESX.PlayerData.inventory[k] = item
+	for i=1, #ESX.PlayerData.inventory, 1 do
+		if ESX.PlayerData.inventory[i].name == item.name then
+			ESX.PlayerData.inventory[i] = item
 			break
 		end
 	end
@@ -367,15 +367,32 @@ end)
 RegisterNetEvent('esx:deleteVehicle')
 AddEventHandler('esx:deleteVehicle', function()
 	local playerPed = PlayerPedId()
-	local vehicle   = ESX.Game.GetVehicleInDirection()
+	local vehicle   = ESX.Game.GetClosestVehicle()
+	local entity = vehicle
 
-	if IsPedInAnyVehicle(playerPed, true) then
-		vehicle = GetVehiclePedIsIn(playerPed, false)
-	end
+    local carModel = GetEntityModel(entity)
+    local carName = GetDisplayNameFromVehicleModel(carModel)
+    NetworkRequestControlOfEntity(entity)
 
-	if DoesEntityExist(vehicle) then
-		ESX.Game.DeleteVehicle(vehicle)
-	end
+    local timeout = 2000
+    while timeout > 0 and not NetworkHasControlOfEntity(entity) do
+        Wait(100)
+        timeout = timeout - 100
+    end
+
+    SetEntityAsMissionEntity(entity, true, true)
+
+    local timeout = 2000
+    while timeout > 0 and not IsEntityAMissionEntity(entity) do
+        Wait(100)
+        timeout = timeout - 100
+    end
+
+    Citizen.InvokeNative( 0xEA386986E786A54F, Citizen.PointerValueIntInitialized( entity ) )
+
+    if (DoesEntityExist(entity)) then
+        DeleteEntity(entity)
+    end
 end)
 
 -- Pause menu disable HUD display
@@ -400,6 +417,7 @@ end
 -- Save loadout
 Citizen.CreateThread(function()
 	while true do
+
 		Citizen.Wait(5000)
 
 		local playerPed      = PlayerPedId()
@@ -410,17 +428,19 @@ Citizen.CreateThread(function()
 			isLoadoutLoaded = false
 		end
 
-		for k,v in ipairs(Config.Weapons) do
-			local weaponName = v.name
+		for i=1, #Config.Weapons, 1 do
+
+			local weaponName = Config.Weapons[i].name
 			local weaponHash = GetHashKey(weaponName)
 			local weaponComponents = {}
 
 			if HasPedGotWeapon(playerPed, weaponHash, false) and weaponName ~= 'WEAPON_UNARMED' then
 				local ammo = GetAmmoInPedWeapon(playerPed, weaponHash)
+				local components = Config.Weapons[i].components
 
-				for k2,v2 in ipairs(v.components) do
-					if HasPedGotWeaponComponent(playerPed, weaponHash, v2.hash) then
-						table.insert(weaponComponents, v2.name)
+				for j=1, #components do
+					if HasPedGotWeaponComponent(playerPed, weaponHash, components[j].hash) then
+						table.insert(weaponComponents, components[j].name)
 					end
 				end
 
@@ -433,7 +453,7 @@ Citizen.CreateThread(function()
 				table.insert(loadout, {
 					name = weaponName,
 					ammo = ammo,
-					label = v.label,
+					label = Config.Weapons[i].label,
 					components = weaponComponents
 				})
 			else
@@ -443,12 +463,14 @@ Citizen.CreateThread(function()
 
 				lastLoadout[weaponName] = nil
 			end
+
 		end
 
 		if loadoutChanged and isLoadoutLoaded then
 			ESX.PlayerData.loadout = loadout
 			TriggerServerEvent('esx:updateLoadout', loadout)
 		end
+
 	end
 end)
 
@@ -478,9 +500,10 @@ if Config.DisableWantedLevel then
 	end)
 end
 
--- Pickups
+-- pickups
 Citizen.CreateThread(function()
 	while true do
+
 		Citizen.Wait(0)
 
 		local playerPed = PlayerPedId()
@@ -508,7 +531,9 @@ Citizen.CreateThread(function()
 				PlaySoundFrontend(-1, 'PICK_UP', 'HUD_FRONTEND_DEFAULT_SOUNDSET', false)
 				v.inRange = true
 			end
+
 		end
+
 	end
 end)
 
@@ -516,16 +541,23 @@ end)
 Citizen.CreateThread(function()
 	while true do
 		Citizen.Wait(1000)
-		local playerPed = PlayerPedId()
 
 		if ESX.PlayerLoaded and isPlayerSpawned then
-			local coords = GetEntityCoords(playerPed)
+			local playerPed = PlayerPedId()
+			local coords    = GetEntityCoords(playerPed)
 
 			if not IsEntityDead(playerPed) then
 				ESX.PlayerData.lastPosition = {x = coords.x, y = coords.y, z = coords.z}
 			end
 		end
+	end
+end)
 
+Citizen.CreateThread(function()
+	while true do
+		Citizen.Wait(1000)
+
+		local playerPed = PlayerPedId()
 		if IsEntityDead(playerPed) and isPlayerSpawned then
 			isPlayerSpawned = false
 		end

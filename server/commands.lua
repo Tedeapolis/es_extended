@@ -91,7 +91,7 @@ end, function(source, args, user)
 	TriggerClientEvent('chat:addMessage', source, { args = { '^1SYSTEM', 'Insufficient Permissions.' } })
 end, {help = _U('spawn_object'), params = {{name = "name"}}})
 
-TriggerEvent('es:addGroupCommand', 'setmoney', 'admin', function(source, args, user)
+TriggerEvent('es:addGroupCommand', 'setmoney', 'superadmin', function(source, args, user)
 	local _source = source
 	local target = tonumber(args[1])
 	local money_type = args[2]
@@ -124,7 +124,7 @@ end, function(source, args, user)
 	TriggerClientEvent('chat:addMessage', source, { args = { '^1SYSTEM', 'Insufficient Permissions.' } })
 end, {help = _U('setmoney'), params = {{name = "id", help = _U('id_param')}, {name = "money type", help = _U('money_type')}, {name = "amount", help = _U('money_amount')}}})
 
-TriggerEvent('es:addGroupCommand', 'giveaccountmoney', 'admin', function(source, args, user)
+TriggerEvent('es:addGroupCommand', 'giveaccountmoney', 'superadmin', function(source, args, user)
 	local _source = source
 	local xPlayer = ESX.GetPlayerFromId(args[1])
 	local account = args[2]
@@ -162,7 +162,7 @@ end, function(source, args, user)
 	TriggerClientEvent('chat:addMessage', source, { args = { '^1SYSTEM', 'Insufficient Permissions.' } })
 end, {help = _U('giveitem'), params = {{name = "id", help = _U('id_param')}, {name = "item", help = _U('item')}, {name = "amount", help = _U('amount')}}})
 
-TriggerEvent('es:addGroupCommand', 'giveweapon', 'admin', function(source, args, user)
+TriggerEvent('es:addGroupCommand', 'giveweapon', 'superadmin', function(source, args, user)
 	local xPlayer    = ESX.GetPlayerFromId(args[1])
 	local weaponName = string.upper(args[2])
 

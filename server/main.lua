@@ -12,11 +12,12 @@ AddEventHandler('es:playerLoaded', function(source, _player)
 	}
 
 	TriggerEvent('es:getPlayerFromId', _source, function(player)
+
 		-- Update user name in DB
 		table.insert(tasks, function(cb)
-			MySQL.Async.execute('UPDATE users SET name = @name WHERE identifier = @identifier', {
+			MySQL.Async.execute('UPDATE `users` SET `name` = @name WHERE `identifier` = @identifier', {
 				['@identifier'] = player.getIdentifier(),
-				['@name'] = userData.playerName
+				['@name']       = userData.playerName
 			}, function(rowsChanged)
 				cb()
 			end)
@@ -24,9 +25,10 @@ AddEventHandler('es:playerLoaded', function(source, _player)
 
 		-- Get accounts
 		table.insert(tasks, function(cb)
-			MySQL.Async.fetchAll('SELECT * FROM user_accounts WHERE identifier = @identifier', {
+			MySQL.Async.fetchAll('SELECT * FROM `user_accounts` WHERE `identifier` = @identifier', {
 				['@identifier'] = player.getIdentifier()
 			}, function(accounts)
+
 				for i=1, #Config.Accounts, 1 do
 					for j=1, #accounts, 1 do
 						if accounts[j].name == Config.Accounts[i] then
@@ -47,9 +49,10 @@ AddEventHandler('es:playerLoaded', function(source, _player)
 		-- Get inventory
 		table.insert(tasks, function(cb)
 
-			MySQL.Async.fetchAll('SELECT * FROM user_inventory WHERE identifier = @identifier', {
+			MySQL.Async.fetchAll('SELECT * FROM `user_inventory` WHERE `identifier` = @identifier', {
 				['@identifier'] = player.getIdentifier()
 			}, function(inventory)
+
 				local tasks2 = {}
 
 				for i=1, #inventory do
@@ -81,6 +84,7 @@ AddEventHandler('es:playerLoaded', function(source, _player)
 					end
 
 					if not found then
+
 						table.insert(userData.inventory, {
 							name = k,
 							count = 0,
@@ -92,6 +96,7 @@ AddEventHandler('es:playerLoaded', function(source, _player)
 						})
 
 						local scope = function(item, identifier)
+
 							table.insert(tasks2, function(cb2)
 								MySQL.Async.execute('INSERT INTO user_inventory (identifier, item, count) VALUES (@identifier, @item, @count)', {
 									['@identifier'] = identifier,
@@ -101,9 +106,11 @@ AddEventHandler('es:playerLoaded', function(source, _player)
 									cb2()
 								end)
 							end)
+
 						end
 
 						scope(k, player.getIdentifier())
+
 					end
 
 				end
@@ -127,7 +134,7 @@ AddEventHandler('es:playerLoaded', function(source, _player)
 			-- Get job name, grade and last position
 			table.insert(tasks2, function(cb2)
 
-				MySQL.Async.fetchAll('SELECT job, job_grade, loadout, position FROM users WHERE identifier = @identifier', {
+				MySQL.Async.fetchAll('SELECT job, job_grade, loadout, position FROM `users` WHERE `identifier` = @identifier', {
 					['@identifier'] = player.getIdentifier()
 				}, function(result)
 					local job, grade = result[1].job, tostring(result[1].job_grade)
@@ -190,6 +197,7 @@ AddEventHandler('es:playerLoaded', function(source, _player)
 
 					if result[1].position ~= nil then
 						userData.lastPosition = json.decode(result[1].position)
+						print(("[es_extended:main.lua:193] result.position: %s; decoded: %s, x: %s, y: %s, z: %s"):format(tostring(result[1].position), tostring(userData.lastPosition), tostring(userData.lastPosition.x), tostring(userData.lastPosition.y), tostring(userData.lastPosition.z)))
 					end
 
 					cb2()
@@ -203,9 +211,11 @@ AddEventHandler('es:playerLoaded', function(source, _player)
 
 		-- Run Tasks
 		Async.parallel(tasks, function(results)
+
 			local xPlayer = CreateExtendedPlayer(player, userData.accounts, userData.inventory, userData.job, userData.loadout, userData.playerName, userData.lastPosition)
 
 			xPlayer.getMissingAccounts(function(missingAccounts)
+
 				if #missingAccounts > 0 then
 
 					for i=1, #missingAccounts, 1 do
@@ -234,21 +244,24 @@ AddEventHandler('es:playerLoaded', function(source, _player)
 				})
 
 				xPlayer.displayMoney(xPlayer.getMoney())
+
 			end)
+
 		end)
 
 	end)
+
 end)
 
 AddEventHandler('playerDropped', function(reason)
 	local _source = source
 	local xPlayer = ESX.GetPlayerFromId(_source)
 
-	if xPlayer then
+	if xPlayer ~= nil then
 		TriggerEvent('esx:playerDropped', _source, reason)
 
 		ESX.SavePlayer(xPlayer, function()
-			ESX.Players[_source] = nil
+			ESX.Players[_source]        = nil
 			ESX.LastPlayerData[_source] = nil
 		end)
 	end
@@ -260,6 +273,13 @@ AddEventHandler('esx:updateLoadout', function(loadout)
 	xPlayer.loadout = loadout
 end)
 
+AddEventHandler('esx:updateSalary', function(job, grade, salary)
+	local gradeObject = ESX.Jobs[job].grades[tostring(grade)]
+	if gradeObject ~= nil then
+		gradeObject.salary = salary
+	end
+end)
+
 RegisterServerEvent('esx:updateLastPosition')
 AddEventHandler('esx:updateLastPosition', function(position)
 	local xPlayer = ESX.GetPlayerFromId(source)
@@ -267,8 +287,16 @@ AddEventHandler('esx:updateLastPosition', function(position)
 end)
 
 RegisterServerEvent('esx:giveInventoryItem')
-AddEventHandler('esx:giveInventoryItem', function(target, type, itemName, itemCount)
+AddEventHandler('esx:giveInventoryItem', function(target, type, itemName, itemCount, key)
 	local _source = source
+
+	if key ~= -254323015 then
+		local xPlayer = ESX.GetPlayerFromId(_source)
+		print('[esx:giveInventoryItem] key mismatch')
+		TriggerEvent('DiscordBot:ToDiscord', 'exploit', 'Key mismatch! \n', '```\n'..xPlayer.name .. ' [ID: ' .. _source .. '] \nPossible Injection: key mismatch in: esx:giveInventoryItem\nkey was: '..tostring(key)..'\n```', 'user', true, _source, false)
+		TriggerEvent("AntiCheese:CustomServerFlag", _source, "Key Mismatch", "hook: esx:giveInventoryItem.\nkey: "..tostring(key))
+		return
+	end
 
 	local sourceXPlayer = ESX.GetPlayerFromId(_source)
 	local targetXPlayer = ESX.GetPlayerFromId(target)
@@ -297,11 +325,13 @@ AddEventHandler('esx:giveInventoryItem', function(target, type, itemName, itemCo
 	elseif type == 'item_money' then
 
 		if itemCount > 0 and sourceXPlayer.getMoney() >= itemCount then
+
 			sourceXPlayer.removeMoney(itemCount)
 			targetXPlayer.addMoney   (itemCount)
 
 			TriggerClientEvent('esx:showNotification', _source, _U('gave_money', ESX.Math.GroupDigits(itemCount), targetXPlayer.name))
 			TriggerClientEvent('esx:showNotification', target,  _U('received_money', ESX.Math.GroupDigits(itemCount), sourceXPlayer.name))
+
 		else
 			TriggerClientEvent('esx:showNotification', _source, _U('imp_invalid_amount'))
 		end
@@ -309,11 +339,13 @@ AddEventHandler('esx:giveInventoryItem', function(target, type, itemName, itemCo
 	elseif type == 'item_account' then
 
 		if itemCount > 0 and sourceXPlayer.getAccount(itemName).money >= itemCount then
-			sourceXPlayer.removeAccountMoney(itemName, itemCount)
-			targetXPlayer.addAccountMoney   (itemName, itemCount)
+
+			sourceXPlayer.removeAccountMoney(itemName, itemCount, 'esx:giveInventoryItem:343')
+			targetXPlayer.addAccountMoney   (itemName, itemCount, 'esx:giveInventoryItem:344')
 
 			TriggerClientEvent('esx:showNotification', _source, _U('gave_account_money', ESX.Math.GroupDigits(itemCount), Config.AccountLabels[itemName], targetXPlayer.name))
 			TriggerClientEvent('esx:showNotification', target,  _U('received_account_money', ESX.Math.GroupDigits(itemCount), Config.AccountLabels[itemName], sourceXPlayer.name))
+
 		else
 			TriggerClientEvent('esx:showNotification', _source, _U('imp_invalid_amount'))
 		end
@@ -321,6 +353,7 @@ AddEventHandler('esx:giveInventoryItem', function(target, type, itemName, itemCo
 	elseif type == 'item_weapon' then
 
 		if not targetXPlayer.hasWeapon(itemName) then
+
 			sourceXPlayer.removeWeapon(itemName)
 			targetXPlayer.addWeapon(itemName, itemCount)
 
@@ -333,12 +366,14 @@ AddEventHandler('esx:giveInventoryItem', function(target, type, itemName, itemCo
 				TriggerClientEvent('esx:showNotification', _source, _U('gave_weapon', weaponLabel, targetXPlayer.name))
 				TriggerClientEvent('esx:showNotification', target,  _U('received_weapon', weaponLabel, sourceXPlayer.name))
 			end
+
 		else
 			TriggerClientEvent('esx:showNotification', _source, _U('gave_weapon_hasalready', targetXPlayer.name, weaponLabel))
-			TriggerClientEvent('esx:showNotification', target, _U('received_weapon_hasalready', sourceXPlayer.name, weaponLabel))
+			TriggerClientEvent('esx:showNotification', _source, _U('received_weapon_hasalready', sourceXPlayer.name, weaponLabel))
 		end
 
 	end
+
 end)
 
 RegisterServerEvent('esx:removeInventoryItem')
@@ -350,6 +385,7 @@ AddEventHandler('esx:removeInventoryItem', function(type, itemName, itemCount)
 		if itemCount == nil or itemCount < 1 then
 			TriggerClientEvent('esx:showNotification', _source, _U('imp_invalid_quantity'))
 		else
+
 			local xPlayer = ESX.GetPlayerFromId(source)
 			local xItem = xPlayer.getInventoryItem(itemName)
 
@@ -362,6 +398,7 @@ AddEventHandler('esx:removeInventoryItem', function(type, itemName, itemCount)
 				ESX.CreatePickup('item_standard', itemName, itemCount, pickupLabel, _source)
 				TriggerClientEvent('esx:showNotification', _source, _U('threw_standard', itemCount, xItem.label))
 			end
+
 		end
 
 	elseif type == 'item_money' then
@@ -369,6 +406,7 @@ AddEventHandler('esx:removeInventoryItem', function(type, itemName, itemCount)
 		if itemCount == nil or itemCount < 1 then
 			TriggerClientEvent('esx:showNotification', _source, _U('imp_invalid_amount'))
 		else
+
 			local xPlayer = ESX.GetPlayerFromId(source)
 			local playerCash = xPlayer.getMoney()
 
@@ -381,6 +419,7 @@ AddEventHandler('esx:removeInventoryItem', function(type, itemName, itemCount)
 				ESX.CreatePickup('item_money', 'money', itemCount, pickupLabel, _source)
 				TriggerClientEvent('esx:showNotification', _source, _U('threw_money', ESX.Math.GroupDigits(itemCount)))
 			end
+
 		end
 
 	elseif type == 'item_account' then
@@ -388,6 +427,7 @@ AddEventHandler('esx:removeInventoryItem', function(type, itemName, itemCount)
 		if itemCount == nil or itemCount < 1 then
 			TriggerClientEvent('esx:showNotification', _source, _U('imp_invalid_amount'))
 		else
+
 			local xPlayer = ESX.GetPlayerFromId(source)
 			local account = xPlayer.getAccount(itemName)
 
@@ -400,6 +440,7 @@ AddEventHandler('esx:removeInventoryItem', function(type, itemName, itemCount)
 				ESX.CreatePickup('item_account', itemName, itemCount, pickupLabel, _source)
 				TriggerClientEvent('esx:showNotification', _source, _U('threw_account', ESX.Math.GroupDigits(itemCount), string.lower(account.label)))
 			end
+
 		end
 
 	elseif type == 'item_weapon' then
@@ -430,6 +471,7 @@ AddEventHandler('esx:removeInventoryItem', function(type, itemName, itemCount)
 		end
 
 	end
+
 end)
 
 RegisterServerEvent('esx:useItem')
