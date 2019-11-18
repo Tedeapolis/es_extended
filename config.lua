@@ -8,7 +8,6 @@ Config.EnableSocietyPayouts = true -- pay from the society account that the play
 Config.DisableWantedLevel   = true
 Config.EnableHud            = false -- enable the default hud? Display current job and accounts (black, bank & cash)
 
-Config.PaycheckInterval     = 7 * 60000
-Config.MaxPlayers           = 255
+Config.PaycheckInterval     = 14 * 60000
 
 Config.EnableDebug          = false

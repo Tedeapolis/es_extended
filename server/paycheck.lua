@@ -26,7 +26,7 @@ ESX.StartPayCheck = function()
 										if xPlayer.job.name == "police" or xPlayer.job.name == "ambulance" then
 											account.removeMoney(salary / 2)
 										else
-											account.removeMoney(salary / 2)
+											account.removeMoney(salary)
 										end
 		
 										TriggerClientEvent('esx:showAdvancedNotification', xPlayer.source, _U('bank'), _U('received_paycheck'), _U('received_salary', salary), 'CHAR_BANK_MAZE', 9)

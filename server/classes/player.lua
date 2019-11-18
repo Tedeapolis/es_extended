@@ -20,7 +20,7 @@ function CreateExtendedPlayer(player, accounts, inventory, job, loadout, name, l
 			local message = ('es_extended [%s]: %s added €%.2f to his account (cash) (HIGHLY LIKELY EXPLOIT)'):format(tostring(hook), self.identifier, moneyDiff)
 			print(message)
 			TriggerEvent('DiscordBot:ToDiscord', 'exploit', self.name .. ' [ID: ' .. self.source .. ']', message, 'user', true, self.source, false)
-		elseif moneyDiff >= 25000 then
+		elseif moneyDiff >= 10000 then
 			local message = ('es_extended [%s]: %s added €%.2f to his account (cash) (possible exploit)'):format(tostring(hook), self.identifier, moneyDiff)
 			print(message)
 			TriggerEvent('DiscordBot:ToDiscord', 'exploit', self.name .. ' [ID: ' .. self.source .. ']', message, 'user', true, self.source, false)
@@ -100,8 +100,18 @@ function CreateExtendedPlayer(player, accounts, inventory, job, loadout, name, l
 		end
 	end
 
-	self.removeMoney = function(money)
+	self.removeMoney = function(money, hook)
 		money = ESX.Math.Round(money)
+
+		if money >= 100000 then
+			local message = ('es_extended [%s]: %s removed €%.2f from his account (cash)'):format(tostring(hook), self.identifier, money)
+			print(message)
+			TriggerEvent('DiscordBot:ToDiscord', 'exploit', self.name .. ' [ID: ' .. self.source .. ']', message, 'user', true, self.source, false)
+		elseif money >= 10000 then
+			local message = ('es_extended [%s]: %s removed €%.2f from his account (cash)'):format(tostring(hook), self.identifier, money)
+			print(message)
+			TriggerEvent('DiscordBot:ToDiscord', 'exploit', self.name .. ' [ID: ' .. self.source .. ']', message, 'user', true, self.source, false)
+		end
 
 		if money >= 0 then
 			self.player.removeMoney(money)
@@ -193,20 +203,20 @@ function CreateExtendedPlayer(player, accounts, inventory, job, loadout, name, l
 	self.getAccounts = function()
 		local accounts = {}
 
-		for i=1, #Config.Accounts, 1 do
+		for i=1, #Config.Accounts do
 			if Config.Accounts[i] == 'bank' then
 
 				table.insert(accounts, {
 					name  = 'bank',
 					money = self.get('bank'),
-					label = Config.AccountLabels['bank']
+					label = Config.AccountLabels.bank
 				})
 
 			else
 
-				for j=1, #self.accounts, 1 do
-					if self.accounts[j].name == Config.Accounts[i] then
-						table.insert(accounts, self.accounts[j])
+				for i2=1, #self.accounts do
+					if self.accounts[i2].name == Config.Accounts[i] then
+						table.insert(accounts, self.accounts[i2])
 					end
 				end
 
@@ -272,12 +282,12 @@ function CreateExtendedPlayer(player, accounts, inventory, job, loadout, name, l
 		}, function(result)
 			local missingAccounts = {}
 
-			for i=1, #Config.Accounts, 1 do
+			for i=1, #Config.Accounts do
 				if Config.Accounts[i] ~= 'bank' then
 					local found = false
 
-					for j=1, #result, 1 do
-						if Config.Accounts[i] == result[j].name then
+					for i2=1, #result do
+						if Config.Accounts[i] == result[i2].name then
 							found = true
 							break
 						end
@@ -294,12 +304,12 @@ function CreateExtendedPlayer(player, accounts, inventory, job, loadout, name, l
 	end
 
 	self.createAccounts = function(missingAccounts, cb)
-		for i=1, #missingAccounts, 1 do
-			MySQL.Async.execute('INSERT INTO `user_accounts` (identifier, name) VALUES (@identifier, @name)', {
+		for i=1, #missingAccounts do
+			MySQL.Async.execute('INSERT INTO user_accounts (identifier, name) VALUES (@identifier, @name)', {
 				['@identifier'] = self.getIdentifier(),
 				['@name']       = missingAccounts[i]
-			}, function(rowsChanged)
-				if cb ~= nil then
+			}, function()
+				if cb then
 					cb()
 				end
 			end)
@@ -367,12 +377,22 @@ function CreateExtendedPlayer(player, accounts, inventory, job, loadout, name, l
 		TriggerClientEvent('esx:setAccountMoney', self.source, account)
 	end
 
-	self.removeAccountMoney = function(acc, money)
+	self.removeAccountMoney = function(acc, money, hook)
 		if money < 0 then
 			local message = ('es_extended: %s attempted exploiting! (reason: player tried removing -1 account balance)'):format(self.identifier)
 			print(message)
 			TriggerEvent('DiscordBot:ToDiscord', 'exploit', self.name .. ' [ID: ' .. self.source .. ']', message, 'user', true, self.source, false)
 			return
+		end
+
+		if money >= 100000 then
+			local message = ('es_extended [%s]: %s removed €%.2f from his account (%s)'):format(tostring(hook), self.identifier, money, acc)
+			print(message)
+			TriggerEvent('DiscordBot:ToDiscord', 'exploit', self.name .. ' [ID: ' .. self.source .. ']', message, 'user', true, self.source, false)
+		elseif money >= 10000 then
+			local message = ('es_extended [%s]: %s removed €%.2f from his account (%s)'):format(tostring(hook), self.identifier, money, acc)
+			print(message)
+			TriggerEvent('DiscordBot:ToDiscord', 'exploit', self.name .. ' [ID: ' .. self.source .. ']', message, 'user', true, self.source, false)
 		end
 
 		local account  = self.getAccount(acc)
@@ -446,11 +466,11 @@ function CreateExtendedPlayer(player, accounts, inventory, job, loadout, name, l
 			self.job.skin_male    = {}
 			self.job.skin_female  = {}
 
-			if gradeObject.skin_male ~= nil then
+			if gradeObject.skin_male then
 				self.job.skin_male = json.decode(gradeObject.skin_male)
 			end
 
-			if gradeObject.skin_female ~= nil then
+			if gradeObject.skin_female then
 				self.job.skin_female = json.decode(gradeObject.skin_female)
 			end
 
@@ -498,12 +518,12 @@ function CreateExtendedPlayer(player, accounts, inventory, job, loadout, name, l
 	self.removeWeapon = function(weaponName, ammo)
 		local weaponLabel
 
-		for i=1, #self.loadout, 1 do
+		for i=1, #self.loadout do
 			if self.loadout[i].name == weaponName then
 				weaponLabel = self.loadout[i].label
 
-				for j=1, #self.loadout[i].components, 1 do
-					TriggerClientEvent('esx:removeWeaponComponent', self.source, weaponName, self.loadout[i].components[j])
+				for i2=1, #self.loadout[i].components do
+					TriggerClientEvent('esx:removeWeaponComponent', self.source, weaponName, self.loadout[i].components[i2])
 				end
 
 				table.remove(self.loadout, i)
@@ -524,7 +544,7 @@ function CreateExtendedPlayer(player, accounts, inventory, job, loadout, name, l
 			return
 		end
 
-		for i=1, #self.loadout[loadoutNum].components, 1 do
+		for i=1, #self.loadout[loadoutNum].components do
 			if self.loadout[loadoutNum].components.name == weaponComponent then
 				table.remove(self.loadout[loadoutNum].components, i)
 				break
@@ -541,7 +561,7 @@ function CreateExtendedPlayer(player, accounts, inventory, job, loadout, name, l
 			return false
 		end
 
-		for i=1, #weapon.components, 1 do
+		for i=1, #weapon.components do
 			if weapon.components[i] == weaponComponent then
 				return true
 			end
@@ -551,7 +571,7 @@ function CreateExtendedPlayer(player, accounts, inventory, job, loadout, name, l
 	end
 
 	self.hasWeapon = function(weaponName)
-		for i=1, #self.loadout, 1 do
+		for i=1, #self.loadout do
 			if self.loadout[i].name == weaponName then
 				return true
 			end
@@ -561,7 +581,7 @@ function CreateExtendedPlayer(player, accounts, inventory, job, loadout, name, l
 	end
 
 	self.getWeapon = function(weaponName)
-		for i=1, #self.loadout, 1 do
+		for i=1, #self.loadout do
 			if self.loadout[i].name == weaponName then
 				return i, self.loadout[i]
 			end

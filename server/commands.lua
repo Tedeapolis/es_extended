@@ -16,7 +16,7 @@ end, function(source, args, user)
 	TriggerClientEvent('chat:addMessage', source, { args = { '^1SYSTEM', 'Insufficient Permissions.' } })
 end, {help = "Teleport to coordinates", params = {{name = "x", help = "X coords"}, {name = "y", help = "Y coords"}, {name = "z", help = "Z coords"}}})
 
-TriggerEvent('es:addGroupCommand', 'setjob', 'jobmaster', function(source, args, user)
+TriggerEvent('es:addGroupCommand', 'setjob', 'superadmin', function(source, args, user)
 	if tonumber(args[1]) and args[2] and tonumber(args[3]) then
 		local xPlayer = ESX.GetPlayerFromId(args[1])
 
@@ -61,11 +61,17 @@ end, function(source, args, user)
 	TriggerClientEvent('chat:addMessage', source, { args = { '^1SYSTEM', 'Insufficient Permissions.' } })
 end, {help = _U('play_emote')})
 
-TriggerEvent('es:addGroupCommand', 'car', 'admin', function(source, args, user)
+TriggerEvent('es:addGroupCommand', 'car', 'superadmin', function(source, args, user)
 	TriggerClientEvent('esx:spawnVehicle', source, args[1])
 end, function(source, args, user)
 	TriggerClientEvent('chat:addMessage', source, { args = { '^1SYSTEM', 'Insufficient Permissions.' } })
 end, {help = _U('spawn_car'), params = {{name = "car", help = _U('spawn_car_param')}}})
+
+TriggerEvent('es:addGroupCommand', 'admincar', 'admin', function(source, args, user)
+	TriggerClientEvent('esx:spawnVehicle', source, 'fire3')
+end, function(source, args, user)
+	TriggerClientEvent('chat:addMessage', source, { args = { '^1SYSTEM', 'Insufficient Permissions.' } })
+end, {help = 'Spawn een admin auto'})
 
 TriggerEvent('es:addGroupCommand', 'cardel', 'admin', function(source, args, user)
 	TriggerClientEvent('esx:deleteVehicle', source)
@@ -73,7 +79,7 @@ end, function(source, args, user)
 	TriggerClientEvent('chat:addMessage', source, { args = { '^1SYSTEM', 'Insufficient Permissions.' } })
 end, {help = _U('delete_vehicle')})
 
-TriggerEvent('es:addGroupCommand', 'dv', 'admin', function(source, args, user)
+TriggerEvent('es:addGroupCommand', 'dv', 'moderator', function(source, args, user)
 	TriggerClientEvent('esx:deleteVehicle', source)
 end, function(source, args, user)
 	TriggerClientEvent('chat:addMessage', source, { args = { '^1SYSTEM', 'Insufficient Permissions.' } })

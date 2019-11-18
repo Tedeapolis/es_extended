@@ -141,7 +141,7 @@ ESX.UI.Menu.RegisterType = function(type, open, close)
 	}
 end
 
-ESX.UI.Menu.Open = function(type, namespace, name, data, submit, cancel, change, close)
+ESX.UI.Menu.Open = function(type, namespace, name, data, submit, cancel, change, close, focus)
 	local menu = {}
 
 	menu.type      = type
@@ -217,7 +217,7 @@ ESX.UI.Menu.Open = function(type, namespace, name, data, submit, cancel, change,
 	end
 
 	table.insert(ESX.UI.Menu.Opened, menu)
-	ESX.UI.Menu.RegisteredTypes[type].open(namespace, name, data)
+	ESX.UI.Menu.RegisteredTypes[type].open(namespace, name, data, focus)
 
 	return menu
 end
@@ -287,13 +287,12 @@ ESX.Game.Teleport = function(entity, coords, cb)
 	end
 
 	TriggerEvent("AntiCheese:Teleport_Kaas", function()
-		Citizen.Wait(500)
-		SetEntityCoords(entity, coords.x, coords.y, coords.z)
-	end, -54474484)
-
-	if cb ~= nil then
-		cb()
-	end
+		Citizen.Wait(1000)
+        SetEntityCoords(entity, coords.x, coords.y, coords.z)
+        if cb ~= nil then
+            cb()
+        end
+    end, -54474484)
 end
 
 ESX.Game.SpawnObject = function(model, coords, cb)
@@ -352,8 +351,11 @@ ESX.Game.DeleteVehicle = function(veh)
 end
 
 ESX.Game.DeleteObject = function(object)
-	SetEntityAsMissionEntity(object, false, true)
-	DeleteObject(object)
+	SetEntityAsMissionEntity(object, false, false)
+    DeleteObject(object)
+    if DoesEntityExist(object) then
+		SetObjectAsNoLongerNeeded(object)
+	end
 end
 
 ESX.Game.SpawnVehicle = function(modelName, coords, heading, cb)
@@ -483,14 +485,13 @@ ESX.Game.GetClosestObject = function(filter, coords)
 end
 
 ESX.Game.GetPlayers = function()
-	local maxPlayers = 255
 	local players    = {}
 
-	for i=0, maxPlayers, 1 do
-		local ped = GetPlayerPed(i)
+	for _,player in ipairs(GetActivePlayers()) do
+		local ped = GetPlayerPed(player)
 
 		if DoesEntityExist(ped) then
-			table.insert(players, i)
+			table.insert(players, player)
 		end
 	end
 
@@ -774,6 +775,7 @@ ESX.Game.SetVehicleProperties = function(vehicle, props)
 
 	if props.fuelLevel ~= nil then
 		SetVehicleFuelLevel(vehicle, props.fuelLevel + 0.0)
+		TriggerEvent('LegacyFuel:UpdateFuel', vehicle, props.fuelLevel + 0.0)
 	end
 
 	if props.dirtLevel ~= nil then
@@ -794,11 +796,9 @@ ESX.Game.SetVehicleProperties = function(vehicle, props)
 
 	if props.pearlescentColor ~= nil and props.wheelColor ~= nil then
 		SetVehicleExtraColours(vehicle, props.pearlescentColor, props.wheelColor)
-		
 	elseif props.pearlescentColor ~= nil then
 		local pearlescentColor, wheelColor = GetVehicleExtraColours(vehicle)
 		SetVehicleExtraColours(vehicle, props.pearlescentColor, wheelColor)
-
 	elseif props.wheelColor ~= nil then
 		local pearlescentColor, wheelColor = GetVehicleExtraColours(vehicle)
 		SetVehicleExtraColours(vehicle, pearlescentColor, props.wheelColor)
@@ -887,6 +887,8 @@ ESX.Game.SetVehicleProperties = function(vehicle, props)
 
 	if props.modEngine ~= nil then
 		SetVehicleMod(vehicle, 11, props.modEngine, false)
+	else
+		SetVehicleMod(vehicle, 11, -1, false)
 	end
 
 	if props.modBrakes ~= nil then
@@ -1020,9 +1022,11 @@ ESX.Game.SetVehicleProperties = function(vehicle, props)
 end
 
 ESX.Game.Utils.DrawText3D = function(coords, text, size)
+	coords = vector3(coords.x, coords.y, coords.z)
+
 	local onScreen, x, y = World3dToScreen2d(coords.x, coords.y, coords.z)
 	local camCoords      = GetGameplayCamCoords()
-	local dist           = GetDistanceBetweenCoords(camCoords, coords.x, coords.y, coords.z, true)
+	local dist           = #(coords - camCoords)
 	local size           = size
 
 	if size == nil then
